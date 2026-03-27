@@ -1,0 +1,38 @@
+{
+    "name": "neuro-ops",
+    "version": "2.5.0",
+    "description": "Causal AI Observability Platform for Microservices Incident Detection & Remediation",
+    "private": true,
+    "workspaces": [
+        "backend",
+        "frontend"
+    ],
+    "scripts": {
+        "dev": "docker-compose -f docker-compose.yml up",
+        "dev:down": "docker-compose -f docker-compose.yml down",
+        "dev:rebuild": "docker-compose -f docker-compose.yml up --build",
+        "prod": "docker-compose -f docker-compose.prod.yml up -d",
+        "logs": "docker-compose logs -f backend",
+        "db:migrate": "docker-compose exec backend npm run db:migrate",
+        "db:seed": "docker-compose exec backend npm run db:seed",
+        "test": "npm run test --workspaces",
+        "format": "prettier --write '**/*.{ts,js,json,md}'",
+        "lint": "eslint '**/*.ts' --fix",
+        "start:local": "node scripts/start-local.js"
+    },
+    "keywords": [
+        "observability",
+        "incident-management",
+        "causal-inference",
+        "microservices",
+        "ai",
+        "anomaly-detection"
+    ],
+    "author": "NeuroOps Team",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "prettier": "^3.1.0",
+        "eslint": "^8.55.0"
+    }
+}
