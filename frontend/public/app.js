@@ -241,7 +241,22 @@ function renderIncidentPanel() {
             btn.classList.toggle('selected', selectedIncident && selectedIncident.id === inc.id);
         }
     });
+    renderPhasePipeline();
     renderSelectedIncidentDetails();
+}
+
+function renderPhasePipeline() {
+    const pipeline = document.getElementById('phase-pipeline');
+    pipeline.innerHTML = '';
+    PHASES.forEach((p, i) => {
+        const step = document.createElement('div');
+        step.className = 'pp-step';
+        const bgColor = PHASE_COLORS[p];
+        step.style.background = activeIncident && PHASES.indexOf(phase) >= i ? bgColor + '20' : 'transparent';
+        step.style.borderColor = bgColor;
+        step.innerHTML = `<div class="pp-step-txt" style="color:${bgColor}">${PHASE_LABELS[p]}</div>`;
+        pipeline.appendChild(step);
+    });
 }
 
 function selectIncident(inc) {
@@ -827,24 +842,6 @@ function exportReport() {
         URL.revokeObjectURL(url);
     }, 100);
 }
-    // Improved fallback: Simulate a high-grade LLM with context-aware, detailed responses
-    const deliverMessage = () => {
-        let response = '';
-        if (activeIncident) {
-            response = `Incident "${activeIncident.label}" detected.\n\nRoot Cause: ${activeIncident.desc}\n\nRecommended Actions:`;
-            const plan = INCIDENT_REMEDIATIONS[activeIncident.id] || [];
-            plan.forEach((step, i) => {
-                response += `\n${i + 1}. ${step.step}`;
-            });
-            response += `\n\nImpact: ${activeIncident.cascades.length ? 'Affects ' + activeIncident.cascades.join(', ') : 'Isolated to ' + activeIncident.target}.`;
-            response += `\n\nWould you like a detailed remediation playbook or further analysis?`;
-        } else {
-            response = `System is in standby mode. All services are healthy.\n\nYou can ask about incidents, request a summary, or get recommendations for improving reliability.\n\nTry: "What is the current system health?" or "How can I prevent payment failures?"`;
-        }
-        addChatMessage(response, 'ai');
-        speakResponse(response); // Only speak when user asks
-    };
-    setTimeout(deliverMessage, 600 + Math.random() * 900);
 
 // Cash Crasher button: triggers a random scenario, only one at a time
 document.getElementById('cash-crasher-btn').addEventListener('click', () => {
