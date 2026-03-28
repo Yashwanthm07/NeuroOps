@@ -132,6 +132,30 @@ const server = http.createServer((req, res) => {
     const pathname = parsedUrl.pathname;
     const query = parsedUrl.query;
 
+    // Root landing
+    if (pathname === '/' && req.method === 'GET') {
+        res.writeHead(200);
+        res.end(JSON.stringify({
+            status: 'NeuroOps API is running',
+            version: '2.5.0',
+            docs: 'https://github.com/Yashwanthm07/NeuroOps',
+            endpoints: [
+                { method: 'GET', path: '/health' },
+                { method: 'GET', path: '/api/incidents' },
+                { method: 'POST', path: '/api/incidents' },
+                { method: 'GET', path: '/api/incidents/:id' },
+                { method: 'POST', path: '/api/incidents/:id/trigger' },
+                { method: 'PUT', path: '/api/incidents/:id' },
+                { method: 'GET', path: '/api/services' },
+                { method: 'GET', path: '/api/metrics' },
+                { method: 'GET', path: '/api/logs' },
+                { method: 'GET', path: '/api/playbooks' },
+                { method: 'POST', path: '/api/assistant' }
+            ]
+        }));
+        return;
+    }
+
     // Health check
     if (pathname === '/health') {
         res.writeHead(200);
