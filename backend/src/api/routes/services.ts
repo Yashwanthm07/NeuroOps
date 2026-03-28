@@ -6,13 +6,13 @@ const router = Router();
 const logger = pino();
 
 // GET /api/services - List all services
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const services = await queryMany('SELECT * FROM services ORDER BY name ASC');
-    res.json({ services });
+    return res.json({ services });
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ error: 'Failed to fetch services' });
+    return res.status(500).json({ error: 'Failed to fetch services' });
   }
 });
 
@@ -23,10 +23,10 @@ router.get('/:id', async (req: Request, res: Response) => {
     if (!service) {
       return res.status(404).json({ error: 'Service not found' });
     }
-    res.json(service);
+    return res.json(service);
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ error: 'Failed to fetch service' });
+    return res.status(500).json({ error: 'Failed to fetch service' });
   }
 });
 

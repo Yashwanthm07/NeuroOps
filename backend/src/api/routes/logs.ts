@@ -36,7 +36,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // POST /api/logs - Ingest logs
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (_req: Request, res: Response) => {
   try {
     // This endpoint would be called by log shipping agents
     res.json({ success: true });

@@ -1,4 +1,10 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
+// Prometheus metrics
+import client from 'prom-client';
+// OpenTelemetry tracing
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import pinoHttp from 'pino-http';
@@ -18,6 +24,19 @@ import logsRoutes from './api/routes/logs';
 // Workers
 import { startIncidentDetector } from './workers/incident-detector';
 import { startCausalAnalyzer } from './workers/causal-analyzer';
+
+
+// --- OpenTelemetry Tracing Init ---
+const sdk = new NodeSDK({
+  traceExporter: new JaegerExporter({
+    endpoint: process.env.JAEGER_ENDPOINT || 'http://jaeger:14268/api/traces',
+  }),
+  instrumentations: [getNodeAutoInstrumentations()],
+});
+sdk.start();
+
+// --- Prometheus Metrics Init ---
+client.collectDefaultMetrics();
 
 const logger = pino({ level: config.logging.level });
 
@@ -45,7 +64,7 @@ export function createApp(): Express {
   app.use('/api/', limiter);
 
   // Health Check
-  app.get('/health', async (req: Request, res: Response) => {
+  app.get('/health', async (_req: Request, res: Response) => {
     try {
       const db = getConnection();
       await db.query('SELECT NOW()');
@@ -71,19 +90,19 @@ export function createApp(): Express {
   app.use('/api/playbooks', playbooksRoutes);
   app.use('/api/logs', logsRoutes);
 
-  // Metrics endpoint
-  app.get('/metrics', (req: Request, res: Response) => {
-    res.set('Content-Type', 'text/plain');
-    res.send('# NeuroOps Metrics Placeholder\n');
+  // Prometheus metrics endpoint
+  app.get('/metrics', async (_req: Request, res: Response) => {
+    res.set('Content-Type', client.register.contentType);
+    res.end(await client.register.metrics());
   });
 
   // 404 Handler
-  app.use((req: Request, res: Response) => {
+  app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: 'Not Found' });
   });
 
   // Error Handler
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     logger.error(err);
     res.status(500).json({
       error: 'Internal Server Error',

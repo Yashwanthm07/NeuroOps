@@ -7,13 +7,13 @@ const router = Router();
 const logger = pino();
 
 // GET /api/playbooks - List playbooks
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const playbooks = await queryMany('SELECT * FROM playbooks ORDER BY created_at DESC');
-    res.json({ playbooks });
+    return res.json({ playbooks });
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ error: 'Failed to fetch playbooks' });
+    return res.status(500).json({ error: 'Failed to fetch playbooks' });
   }
 });
 
@@ -24,10 +24,10 @@ router.get('/:id', async (req: Request, res: Response) => {
     if (!playbook) {
       return res.status(404).json({ error: 'Playbook not found' });
     }
-    res.json(playbook);
+    return res.json(playbook);
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ error: 'Failed to fetch playbook' });
+    return res.status(500).json({ error: 'Failed to fetch playbook' });
   }
 });
 

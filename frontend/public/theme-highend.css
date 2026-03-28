@@ -1,0 +1,161 @@
+/*
+High-End Jira Product Discovery Inspired Theme
+---------------------------------------------
+This CSS file provides a modern, clean, and structured layout inspired by Jira Product Discovery. It features a sidebar, topbar, content area, cards, and a responsive design. Use with index.html for a high-end look.
+*/
+
+:root {
+  --primary: #0052cc;
+  --primary-light: #2684ff;
+  --sidebar-bg: #f4f5f7;
+  --content-bg: #fff;
+  --border: #e1e4e8;
+  --text: #172b4d;
+  --muted: #6b778c;
+  --card-bg: #f9fafb;
+  --card-border: #e1e4e8;
+  --accent: #36b37e;
+  --danger: #ff5630;
+  --shadow: 0 2px 8px rgba(0,0,0,0.04);
+  --radius: 8px;
+  --font: 'Roboto', 'Segoe UI', Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--sidebar-bg);
+  color: var(--text);
+}
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 32px 0 0 0;
+}
+
+.sidebar .logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--primary);
+  margin: 0 0 32px 32px;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 32px;
+}
+
+.sidebar nav a {
+  text-decoration: none;
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  transition: background 0.2s;
+  font-weight: 500;
+}
+
+.sidebar nav a.active,
+.sidebar nav a:hover {
+  background: var(--primary-light);
+  color: #fff;
+}
+
+.topbar {
+  height: 64px;
+  background: var(--content-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+}
+
+.content {
+  flex: 1;
+  background: var(--content-bg);
+  padding: 40px 48px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px 32px;
+  margin-bottom: 24px;
+  transition: box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0,82,204,0.08);
+}
+
+.card-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.card-meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin-bottom: 16px;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: var(--accent);
+  color: #fff;
+  margin-right: 8px;
+}
+
+.status-pill.danger {
+  background: var(--danger);
+}
+
+.ideas-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    padding: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar nav {
+    flex-direction: row;
+    margin: 0 0 0 16px;
+  }
+  .content {
+    padding: 24px 8px;
+  }
+}

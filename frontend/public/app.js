@@ -212,7 +212,7 @@ function renderGraph() {
         const p = pos[s.id];
         const st = serviceState[s.id];
         const c = sColor(st.status);
-        const r = activeIncident?.target === s.id ? 21 : 15;
+        const r = activeIncident && activeIncident.target === s.id ? 21 : 15;
         html += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${c}14" stroke="${c}" stroke-width="1"/>
       <text x="${p.x}" y="${p.y}" text-anchor="middle" dominant-baseline="central" font-size="14">${s.icon}</text>`;
     });
@@ -228,7 +228,9 @@ function renderIncidentPanel() {
             btn.className = 'scenario-btn';
             btn.textContent = inc.label;
             btn.setAttribute('data-id', inc.id);
-            btn.onclick = () => selectIncident(inc);
+            btn.onclick = () => {
+                if (phase === 'standby') selectIncident(inc);
+            };
             grid.appendChild(btn);
         });
     }
@@ -236,7 +238,7 @@ function renderIncidentPanel() {
         const btn = grid.querySelector(`[data-id="${inc.id}"]`);
         if (btn) {
             btn.disabled = phase !== 'standby';
-            btn.classList.toggle('selected', selectedIncident?.id === inc.id);
+            btn.classList.toggle('selected', selectedIncident && selectedIncident.id === inc.id);
         }
     });
     renderSelectedIncidentDetails();
@@ -281,8 +283,10 @@ function renderSelectedIncidentDetails() {
                 <button id="inject-fault-btn" class="export-btn" style="width: 100%;" ${phase !== 'standby' ? 'disabled' : ''}>INJECT FAULT</button>`;
     detailsDiv.innerHTML = html;
     const btn = document.getElementById('inject-fault-btn');
-    btn.onclick = () => triggerIncident(selectedIncident);
-    btn.disabled = phase !== 'standby';
+    btn.onclick = () => {
+        if (phase === 'standby' && selectedIncident) triggerIncident(selectedIncident);
+    };
+    btn.disabled = phase !== 'standby' || !selectedIncident;
 }
 
 function renderLogs() {
@@ -426,6 +430,7 @@ function addChatMessage(msg, type = 'ai') {
     chatMessages.push({ msg, type, time: new Date().toLocaleTimeString() });
     if (chatMessages.length > 20) chatMessages.shift();
     renderChat();
+    // Do not auto-speak for AI/system messages. Only speak in handleChatSend or after voice recognition.
 }
 
 function renderChat() {
@@ -463,7 +468,7 @@ async function handleChatSend() {
             const data = await response.json();
             const reply = data.reply || 'I could not derive a response. Please try again.';
             addChatMessage(reply, 'ai');
-            speakResponse(reply);
+            speakResponse(reply); // Only speak when user asks
             return;
         }
     } catch (e) {
@@ -733,27 +738,32 @@ async function fetchMetricsFromAPI() {
 
 // Fetch logs from backend API
 async function fetchLogsFromAPI() {
-  try {
-    const res = await fetch(`${API_BASE}/logs?limit=20`);
-    if (!res.ok) throw new Error('Failed to fetch logs');
-    const data = await res.json();
-    if (data.logs && Array.isArray(data.logs)) {
-      // Merge API logs with local logs
-      const apiLogs = data.logs.map(l => ({
-        ts: l.ts || new Date().toLocaleTimeString(),
-        lv: l.lv || 'INFO',
-        src: l.src || 'API',
-        msg: l.msg || 'Unknown event'
-      }));
-      logs = [...apiLogs, ...logs].slice(0, 100);
-      renderLogs();
+    try {
+        const res = await fetch(`${API_BASE}/logs?limit=20`);
+        if (!res.ok) throw new Error('Failed to fetch logs');
+        const data = await res.json();
+        if (data.logs && Array.isArray(data.logs)) {
+            // Merge API logs with local logs
+            const apiLogs = data.logs.map(l => ({
+                ts: l.ts || new Date().toLocaleTimeString(),
+                lv: l.lv || 'INFO',
+                src: l.src || 'API',
+                msg: l.msg || 'Unknown event'
+            }));
+            logs = [...apiLogs, ...logs].slice(0, 100);
+            renderLogs();
+            // Remove any previous backend error marker if backend is now available
+            backendErrorShown = false;
+        }
+    } catch (e) {
+        console.error('Logs fetch error:', e);
+        if (!window.backendErrorShown) {
+            logs.unshift({ts: new Date().toLocaleTimeString(), lv: 'ERROR', src: 'System', msg: 'Unable to fetch backend logs (check API status)'});
+            logs = logs.slice(0, 100);
+            renderLogs();
+            window.backendErrorShown = true;
+        }
     }
-  } catch (e) {
-    console.error('Logs fetch error:', e);
-    logs.unshift({ts: new Date().toLocaleTimeString(), lv: 'ERROR', src: 'System', msg: 'Unable to fetch backend logs (check API status)'});
-    logs = logs.slice(0, 100);
-    renderLogs();
-  }
 }
 
 function addSystemLog(msg, level = 'INFO') {
@@ -771,8 +781,8 @@ for (let i = 0; i < 10; i++) {
   logs.push({ts: new Date().toLocaleTimeString(), lv: 'INFO', src: pick(SERVICES).name, msg: 'System operational'});
 }
 
-renderAll();
 
+renderAll();
 initCharts();
 
 // Chatbot event listeners
@@ -780,42 +790,111 @@ document.getElementById('chat-send').addEventListener('click', handleChatSend);
 document.getElementById('chat-input').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleChatSend();
 });
-document.getElementById('voice-btn').addEventListener('click', startVoiceRecognition);
+document.getElementById('voice-btn').addEventListener('click', () => {
+    startVoiceRecognition();
+});
 
 // Export button
 document.getElementById('export-btn').addEventListener('click', exportReport);
 
+function exportReport() {
+    // Gather summary data
+    const summary = {
+        timestamp: new Date().toLocaleString(),
+        totalIncidents,
+        sloMet,
+        incidents: logs.filter(l => l.lv === 'ERROR' || l.lv === 'SYS' || l.lv === 'CAUSAL' || l.lv === 'AI'),
+        metrics: SERVICES.map(s => ({
+            id: s.id,
+            name: s.name,
+            latency: serviceState[s.id].latency,
+            rps: serviceState[s.id].rps,
+            err: serviceState[s.id].err,
+            status: serviceState[s.id].status
+        })),
+        logs: logs.slice(0, 50)
+    };
+    const text = `NeuroOps Dashboard Report\n\nTime: ${summary.timestamp}\nTotal Incidents: ${summary.totalIncidents}\nSLO Met: ${summary.sloMet}\n\n--- Incident Events ---\n${summary.incidents.map(l => `[${l.ts}] [${l.lv}] [${l.src}] ${l.msg}`).join('\n')}\n\n--- Service Metrics ---\n${summary.metrics.map(m => `${m.name}: Latency=${m.latency}ms, RPS=${m.rps}, Error%=${m.err}, Status=${m.status}`).join('\n')}\n\n--- Recent Logs ---\n${summary.logs.map(l => `[${l.ts}] [${l.lv}] [${l.src}] ${l.msg}`).join('\n')}`;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `neuroops_report_${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+}
+    // Improved fallback: Simulate a high-grade LLM with context-aware, detailed responses
+    const deliverMessage = () => {
+        let response = '';
+        if (activeIncident) {
+            response = `Incident "${activeIncident.label}" detected.\n\nRoot Cause: ${activeIncident.desc}\n\nRecommended Actions:`;
+            const plan = INCIDENT_REMEDIATIONS[activeIncident.id] || [];
+            plan.forEach((step, i) => {
+                response += `\n${i + 1}. ${step.step}`;
+            });
+            response += `\n\nImpact: ${activeIncident.cascades.length ? 'Affects ' + activeIncident.cascades.join(', ') : 'Isolated to ' + activeIncident.target}.`;
+            response += `\n\nWould you like a detailed remediation playbook or further analysis?`;
+        } else {
+            response = `System is in standby mode. All services are healthy.\n\nYou can ask about incidents, request a summary, or get recommendations for improving reliability.\n\nTry: "What is the current system health?" or "How can I prevent payment failures?"`;
+        }
+        addChatMessage(response, 'ai');
+        speakResponse(response); // Only speak when user asks
+    };
+    setTimeout(deliverMessage, 600 + Math.random() * 900);
+
+// Cash Crasher button: triggers a random scenario, only one at a time
+document.getElementById('cash-crasher-btn').addEventListener('click', () => {
+    if (phase !== 'standby') {
+        addChatMessage('Please wait until the current incident is resolved before triggering another.', 'ai');
+        return;
+    }
+    // Pick a random scenario from INCIDENTS
+    const randomScenario = INCIDENTS[Math.floor(Math.random() * INCIDENTS.length)];
+    selectedIncident = randomScenario;
+    renderAll();
+    setTimeout(() => {
+        triggerIncident(randomScenario);
+    }, 300);
+});
+
+
+// Only update metrics, not errors, every second
 setInterval(() => {
-  SERVICES.forEach(s => {
-    const st = serviceState[s.id];
-    st.latency = s.bLat * (0.9 + Math.random() * 0.2);
-    st.rps = s.bRps * (0.9 + Math.random() * 0.2);
-    st.err = s.bErr * (0.9 + Math.random() * 0.2);
-    st.spark = [...st.spark.slice(1), st.latency];
-    st.sparkRps = [...st.sparkRps.slice(1), st.rps];
-    st.sparkErr = [...st.sparkErr.slice(1), st.err];
-  });
-  renderMetricsBar();
-  renderServiceCards();
-  updateCharts();
-  fetchMetricsFromAPI();
+    SERVICES.forEach(s => {
+        const st = serviceState[s.id];
+        st.latency = s.bLat * (0.9 + Math.random() * 0.2);
+        st.rps = s.bRps * (0.9 + Math.random() * 0.2);
+        st.err = s.bErr * (0.9 + Math.random() * 0.2);
+        st.spark = [...st.spark.slice(1), st.latency];
+        st.sparkRps = [...st.sparkRps.slice(1), st.rps];
+        st.sparkErr = [...st.sparkErr.slice(1), st.err];
+    });
+    renderMetricsBar();
+    renderServiceCards();
+    updateCharts();
+    fetchMetricsFromAPI();
 }, 1000);
 
 setInterval(() => {
-  if (startTime && phase !== 'standby') {
-    elapsedMs = Date.now() - startTime;
-    renderHeader();
-  }
+    if (startTime && phase !== 'standby') {
+        elapsedMs = Date.now() - startTime;
+        renderHeader();
+    }
 
-  fetchLogsFromAPI();
+    fetchLogsFromAPI();
 
-  // Add periodic system heartbeat logs
-  if (Math.random() < 0.36) {
-    addSystemLog('System heartbeat: platform healthy', 'INFO');
-  }
+    // Add periodic system heartbeat logs
+    if (Math.random() < 0.36) {
+        addSystemLog('System heartbeat: platform healthy', 'INFO');
+    }
 
-  // Show predictive alert occasionally
-  if (Math.random() < 0.05 && phase === 'standby') {
-    showPredictiveAlert();
-  }
+    // Show predictive alert occasionally
+    if (Math.random() < 0.05 && phase === 'standby') {
+        showPredictiveAlert();
+    }
+    // No random error logs here!
 }, 2000);

@@ -34,7 +34,12 @@
         "pino": "^8.17.2",
         "pino-http": "^8.6.1",
         "redis": "^4.6.12",
-        "uuid": "^9.0.1"
+        "uuid": "^9.0.1",
+        "prom-client": "^14.1.1",
+        "@opentelemetry/api": "^1.9.1",
+        "@opentelemetry/sdk-node": "^0.43.0",
+        "@opentelemetry/auto-instrumentations-node": "^0.43.0",
+        "@opentelemetry/exporter-jaeger": "^1.18.0"
     },
     "devDependencies": {
         "@types/cors": "^2.8.19",

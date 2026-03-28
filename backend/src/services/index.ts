@@ -1,10 +1,10 @@
 // Services for incident management, causal analysis, and Claude AI integration
 
-import pino from 'pino';
+// Removed unused pino import
 import { getRedis } from '../config/redis';
 import { queryMany, queryOne } from '../config/database';
 
-const logger = pino();
+// Removed unused logger import
 
 export class IncidentService {
   async getActiveIncidents() {
@@ -85,7 +85,7 @@ export class AnomalyService {
     return parseFloat(anomalyScore.toFixed(3));
   }
 
-  async detectCascade(primaryService: string, allServices: any[]): Promise<string[]> {
+  async detectCascade(primaryService: string, _allServices: any[]): Promise<string[]> {
     // Simple cascade detection based on dependencies
     const cascade: string[] = [];
     const deps = await queryMany(
